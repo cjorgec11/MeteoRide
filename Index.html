@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pronóstico del tiempo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0a1628;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .app {
+      min-height: 100vh;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sky-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: linear-gradient(160deg, #0a1628 0%, #1a2f55 40%, #2a4a8a 100%);
+    }
+
+    .stars {
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(1px 1px at 20% 15%, rgba(255,255,255,0.7) 0%, transparent 100%),
+        radial-gradient(1px 1px at 80% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 55% 25%, rgba(255,255,255,0.6) 0%, transparent 100%),
+        radial-gradient(1px 1px at 35% 40%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 35%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 10% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 70% 50%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 45% 70%, rgba(255,255,255,0.4) 0%, transparent 100%);
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .title {
+      color: rgba(255,255,255,0.95);
+      font-size: 22px;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.55);
+      font-size: 14px;
+      text-align: center;
+      margin-top: -0.75rem;
+    }
+
+    .slider-section {
+      width: 100%;
+      background: rgba(255,255,255,0.08);
+      border: 0.5px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 1rem 1.25rem 1.25rem;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .slider-label { color: rgba(255,255,255,0.6); font-size: 13px; }
+
+    .slider-value {
+      color: #fff;
+      font-size: 15px;
+      font-weight: 500;
+      background: rgba(255,255,255,0.15);
+      border-radius: 20px;
+      padding: 2px 12px;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.2);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+    input[type=range]::-moz-range-thumb {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    .slider-ticks {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      padding: 0 2px;
+    }
+
+    .tick {
+      color: rgba(255,255,255,0.3);
+      font-size: 11px;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .tick.active {
+      color: rgba(255,255,255,0.9);
+      font-weight: 500;
+    }
+
+    .status {
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    .results { display: none; width: 100%; flex-direction: column; gap: 12px; }
+    .results.visible { display: flex; }
+
+    .rain-card {
+      background: rgba(255,255,255,0.12);
+      border: 0.5px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      text-align: center;
+    }
+
+    .rain-pct { font-size: 56px; font-weight: 500; color: #fff; line-height: 1; }
+    .rain-label { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    .rain-desc { font-size: 14px; font-weight: 500; margin-top: 8px; }
+
+    .temp-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .temp-card {
+      background: rgba(255,255,255,0.1);
+      border: 0.5px solid rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      text-align: center;
+    }
+
+    .temp-icon { font-size: 16px; margin-bottom: 4px; display: block; color: rgba(255,255,255,0.6); }
+    .temp-val { font-size: 28px; font-weight: 500; color: #fff; line-height: 1.1; }
+    .temp-lbl { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 3px; }
+    .location-line { font-size: 12px; color: rgba(255,255,255,0.45); text-align: center; }
+
+    .error-msg {
+      background: rgba(226,75,74,0.2);
+      border: 0.5px solid rgba(226,75,74,0.4);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: rgba(255,160,160,0.9);
+      font-size: 13px;
+      text-align: center;
+      display: none;
+    }
+
+    .error-msg.visible { display: block; }
+    .rain-low { color: #7dc9a0; }
+    .rain-mid { color: #f5c97a; }
+    .rain-high { color: #f08c8c; }
+
+    .rain-drops { display: flex; justify-content: center; gap: 5px; margin-top: 10px; }
+
+    .drop {
+      width: 8px; height: 12px;
+      border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+      background: rgba(255,255,255,0.2);
+      transition: background 0.4s;
+    }
+
+    .drop.active-low  { background: #7dc9a0; }
+    .drop.active-mid  { background: #f5c97a; }
+    .drop.active-high { background: #f08c8c; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="sky-bg"><div class="stars"></div></div>
+    <div class="content">
+
+      <p class="title">Pronóstico del tiempo</p>
+      <p class="subtitle">Desliza para elegir el período</p>
+
+      <div class="slider-section">
+        <div class="slider-header">
+          <span class="slider-label">Horas a consultar</span>
+          <span class="slider-value" id="sliderVal">2 horas</span>
+        </div>
+        <input type="range" id="hoursSlider" min="1" max="8" step="1" value="2"
+          oninput="onSliderChange(this.value)">
+        <div class="slider-ticks" id="ticks"></div>
+      </div>
+
+      <p class="status" id="status">Cargando datos de ubicación...</p>
+      <div class="error-msg" id="errorMsg"></div>
+
+      <div class="results" id="results">
+        <div class="rain-card">
+          <div class="rain-pct" id="rainPct">--%</div>
+          <div class="rain-label" id="rainLabel">probabilidad de lluvia</div>
+          <div class="rain-desc" id="rainDesc"></div>
+          <div class="rain-drops">
+            <div class="drop" id="d1"></div>
+            <div class="drop" id="d2"></div>
+            <div class="drop" id="d3"></div>
+            <div class="drop" id="d4"></div>
+            <div class="drop" id="d5"></div>
+          </div>
+        </div>
+        <div class="temp-row">
+          <div class="temp-card">
+            <span class="temp-icon">▲</span>
+            <div class="temp-val" id="tempMax">--°</div>
+            <div class="temp-lbl">Temperatura máx.</div>
+          </div>
+          <div class="temp-card">
+            <span class="temp-icon">▼</span>
+            <div class="temp-val" id="tempMin">--°</div>
+            <div class="temp-lbl">Temperatura mín.</div>
+          </div>
+        </div>
+        <div class="location-line" id="locationLine"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let weatherData = null;
+    let startIdx = 0;
+
+    function buildTicks(val) {
+      const container = document.getElementById('ticks');
+      container.innerHTML = '';
+      for (let i = 1; i <= 8; i++) {
+        const tick = document.createElement('span');
+        tick.className = 'tick' + (i === val ? ' active' : '');
+        tick.textContent = i + 'h';
+        container.appendChild(tick);
+      }
+    }
+
+    function onSliderChange(v) {
+      const n = parseInt(v);
+      document.getElementById('sliderVal').textContent = n + (n === 1 ? ' hora' : ' horas');
+      buildTicks(n);
+      if (weatherData) renderResults(n);
+    }
+
+    function renderResults(hours) {
+      const temps = weatherData.hourly.temperature_2m;
+      const precProb = weatherData.hourly.precipitation_probability;
+
+      const slice = [];
+      for (let i = startIdx; i < Math.min(startIdx + hours, temps.length); i++) {
+        slice.push({ temp: temps[i], prob: precProb[i] || 0 });
+      }
+
+      const maxProb = Math.max(...slice.map(h => h.prob));
+      const maxTemp = Math.max(...slice.map(h => h.temp));
+      const minTemp = Math.min(...slice.map(h => h.temp));
+
+      document.getElementById('rainPct').textContent = maxProb + '%';
+      document.getElementById('tempMax').textContent = Math.round(maxTemp) + '°C';
+      document.getElementById('tempMin').textContent = Math.round(minTemp) + '°C';
+      document.getElementById('rainLabel').textContent =
+        'probabilidad de lluvia · próximas ' + hours + (hours === 1 ? ' hora' : ' horas');
+
+      let desc, cls;
+      if (maxProb < 20)      { desc = 'Muy poco probable que llueva';    cls = 'rain-low'; }
+      else if (maxProb < 50) { desc = 'Posibilidad moderada de lluvia';  cls = 'rain-mid'; }
+      else if (maxProb < 75) { desc = 'Bastante probable que llueva';    cls = 'rain-high'; }
+      else                   { desc = 'Lluvia muy probable';             cls = 'rain-high'; }
+
+      const rainDesc = document.getElementById('rainDesc');
+      rainDesc.textContent = desc;
+      rainDesc.className = 'rain-desc ' + cls;
+
+      const dropCls = maxProb < 20 ? 'active-low' : maxProb < 50 ? 'active-mid' : 'active-high';
+      const activeCnt = Math.round(maxProb / 20);
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById('d' + i).className =
+          'drop' + (i <= activeCnt ? ' ' + dropCls : '');
+      }
+
+      document.getElementById('results').classList.add('visible');
+    }
+
+    async function init() {
+      buildTicks(2);
+      const status = document.getElementById('status');
+      const errorMsg = document.getElementById('errorMsg');
+
+      try {
+        const pos = await new Promise((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+        );
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        status.textContent = 'Consultando pronóstico...';
+
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability&forecast_days=1&timezone=auto`;
+        const res = await fetch(url);
+        weatherData = await res.json();
+
+        const now = new Date();
+        const nowHourStr = now.toISOString().slice(0, 13);
+        const idx = weatherData.hourly.time.findIndex(h => h.startsWith(nowHourStr));
+        startIdx = idx === -1 ? 0 : idx;
+
+        try {
+          const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+          const geoData = await geo.json();
+          const city = geoData.address?.city || geoData.address?.town || geoData.address?.village || '';
+          if (city) document.getElementById('locationLine').textContent = city;
+        } catch(e) {}
+
+        status.textContent = '';
+        renderResults(parseInt(document.getElementById('hoursSlider').value));
+
+      } catch(err) {
+        let msg = 'Error al obtener datos.';
+        if (err.code === 1) msg = 'Permiso de ubicación denegado. Actívalo en tu navegador.';
+        else if (err.code === 2) msg = 'No se pudo obtener la ubicación.';
+        else if (err.code === 3) msg = 'Tiempo de espera agotado. Recarga la página.';
+        status.textContent = '';
+        errorMsg.textContent = msg;
+        errorMsg.classList.add('visible');
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
