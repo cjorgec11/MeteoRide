@@ -258,9 +258,9 @@
       border: 0.5px solid;
       transition: background 0.5s, border-color 0.5s;
     }
-    .tarjeta-bici.ir      { background: rgba(125,201,160,0.15); border-color: rgba(125,201,160,0.4); }
+    .tarjeta-bici.ir         { background: rgba(125,201,160,0.15); border-color: rgba(125,201,160,0.4); }
     .tarjeta-bici.precaución { background: rgba(245,201,122,0.15); border-color: rgba(245,201,122,0.4); }
-    .tarjeta-bici.no-ir   { background: rgba(240,140,140,0.15); border-color: rgba(240,140,140,0.4); }
+    .tarjeta-bici.no-ir      { background: rgba(240,140,140,0.15); border-color: rgba(240,140,140,0.4); }
 
     .icono-bici-fondo {
       flex-shrink: 0;
@@ -376,7 +376,7 @@
            <circle cx="20" cy="10" r="1.5" fill="#7dc9a0"/>
            <path d="M17 7 L23 7" stroke="#7dc9a0" stroke-width="1.8" stroke-linecap="round"/>
            <circle cx="16" cy="5" r="2" fill="none" stroke="#7dc9a0" stroke-width="1.5"/>`,
-      precaución: `<circle cx="8" cy="22" r="5" stroke="#f5c97a" stroke-width="1.8" fill="none"/>
+      'precaución': `<circle cx="8" cy="22" r="5" stroke="#f5c97a" stroke-width="1.8" fill="none"/>
               <circle cx="24" cy="22" r="5" stroke="#f5c97a" stroke-width="1.8" fill="none"/>
               <path d="M8 22 L13 10 L20 10 L24 22" stroke="#f5c97a" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
               <path d="M13 10 L16 22" stroke="#f5c97a" stroke-width="1.8" fill="none"/>
@@ -405,10 +405,10 @@
         if (tempMedia < 8) return { nivel: 'no-ir', veredicto: 'No recomendado', razon: 'Lluvia posible y temperatura baja. Combinación incómoda y arriesgada en carretera.' };
         return { nivel: 'precaución', veredicto: 'Sal con precaución', razon: 'Posibilidad de lluvia moderada. Lleva chubasquero y evita rutas con barro.' };
       }
-      if (tempMedia < 4)  return { nivel: 'no-ir',     veredicto: 'Demasiado frío',             razon: 'Las temperaturas son muy bajas. Riesgo de hipotermia y posible hielo en el asfalto.' };
-      if (tempMedia < 10) return { nivel: 'precaución', veredicto: 'Posible, pero abrígate',     razon: 'Temperatura fresca con poco riesgo de lluvia. Lleva ropa térmica y guantes.' };
-      if (tempMedia > 36) return { nivel: 'precaución', veredicto: 'Mucho calor',                razon: 'Temperatura muy alta. Sal temprano, hidratación constante y evita horas de máximo sol.' };
-      return { nivel: 'ir', veredicto: '¡Perfecto para salir en bici!', razon: 'Buenas condiciones. Cielo despejado y temperatura agradable. ¡Disfruta la ruta!' };
+      if (tempMedia < 4)  return { nivel: 'no-ir',      veredicto: 'Demasiado frío',         razon: 'Temperaturas muy bajas. Riesgo de hipotermia y posible hielo en el asfalto.' };
+      if (tempMedia < 10) return { nivel: 'precaución',  veredicto: 'Posible, pero abrígate', razon: 'Temperatura fresca con poco riesgo de lluvia. Lleva ropa térmica y guantes.' };
+      if (tempMedia > 36) return { nivel: 'precaución',  veredicto: 'Mucho calor',            razon: 'Sal temprano, hidratación constante y evita las horas de máximo sol.' };
+      return { nivel: 'ir', veredicto: '¡Perfecto para salir en bici!', razon: 'Buenas condiciones. Temperatura agradable y sin lluvia prevista. ¡Disfruta la ruta!' };
     }
 
     // ─── Variables globales ───────────────────────────────────────────────────
@@ -416,7 +416,7 @@
     let indiceHoraActual = 0;
     let temporizadoresContador = [];
 
-    // ─── Construir las marcas del deslizador ──────────────────────────────────
+    // ─── Construir las marcas del deslizador ─────────────────────────────────
     function construirMarcas(horaSeleccionada) {
       const contenedor = document.getElementById('marcas');
       contenedor.innerHTML = '';
@@ -464,7 +464,7 @@
       temporizadoresContador.forEach(t => clearInterval(t));
       temporizadoresContador = [];
 
-      const temperaturas = datosMeteorológicos.hourly.temperature_2m;
+      const temperaturas   = datosMeteorológicos.hourly.temperature_2m;
       const probabilidades = datosMeteorológicos.hourly.precipitation_probability;
 
       // Extraer el tramo de horas seleccionado
@@ -473,9 +473,9 @@
         tramo.push({ temp: temperaturas[i], prob: probabilidades[i] || 0 });
       }
 
-      const probMax  = Math.max(...tramo.map(h => h.prob));
-      const tempMax  = Math.max(...tramo.map(h => h.temp));
-      const tempMin  = Math.min(...tramo.map(h => h.temp));
+      const probMax = Math.max(...tramo.map(h => h.prob));
+      const tempMax = Math.max(...tramo.map(h => h.temp));
+      const tempMin = Math.min(...tramo.map(h => h.temp));
 
       // Actualizar etiqueta de horas
       document.getElementById('etiquetaLluvia').textContent =
@@ -553,15 +553,22 @@
 
         const { latitude: latitud, longitude: longitud } = posicion.coords;
 
-        // 2. Obtener datos meteorológicos de Open-Meteo (gratis, sin clave)
+        // 2. Obtener datos meteorológicos de Open-Meteo (gratis, sin clave API)
+        //    timezone=auto hace que la API devuelva horas en hora local del usuario
         const urlMeteo = `https://api.open-meteo.com/v1/forecast?latitude=${latitud}&longitude=${longitud}&hourly=temperature_2m,precipitation_probability&forecast_days=1&timezone=auto`;
         const respuestaMeteo = await fetch(urlMeteo);
         datosMeteorológicos = await respuestaMeteo.json();
 
-        // 3. Encontrar la hora actual en los datos
+        // 3. Construir la hora local del dispositivo para encontrar el índice correcto
+        //    Usamos getHours() en lugar de toISOString() para evitar el desfase UTC
         const ahora = new Date();
-        const horaActualStr = ahora.toISOString().slice(0, 13);
-        const indice = datosMeteorológicos.hourly.time.findIndex(h => h.startsWith(horaActualStr));
+        const anio  = ahora.getFullYear();
+        const mes   = String(ahora.getMonth() + 1).padStart(2, '0');
+        const dia   = String(ahora.getDate()).padStart(2, '0');
+        const hora  = String(ahora.getHours()).padStart(2, '0');
+        const horaLocalStr = `${anio}-${mes}-${dia}T${hora}`;
+
+        const indice = datosMeteorológicos.hourly.time.findIndex(h => h.startsWith(horaLocalStr));
         indiceHoraActual = indice === -1 ? 0 : indice;
 
         // 4. Obtener nombre de la ciudad (opcional, puede fallar sin problema)
