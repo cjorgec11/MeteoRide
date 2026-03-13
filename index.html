@@ -2,604 +2,960 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>RideMeteo</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #0a1628;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    :root {
+      --color-verde: #7dc9a0;
+      --color-amarillo: #f5c97a;
+      --color-rojo: #f08c8c;
+      --color-azul: #7ab8f5;
+      --nav-height: 72px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: #0a1628;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* ── Contenedor principal fijo ── */
     .app {
-      min-height: 100vh;
-      width: 100%;
+      position: fixed;
+      inset: 0;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem 1rem;
-      position: relative;
+      background: #0a1628;
       overflow: hidden;
     }
 
-    /* Fondo de cielo estrellado */
+    /* ── Fondo de cielo ── */
     .fondo-cielo {
       position: fixed;
       inset: 0;
       z-index: 0;
-      background: linear-gradient(160deg, #0a1628 0%, #1a2f55 40%, #2a4a8a 100%);
+      background: linear-gradient(160deg, #0a1628 0%, #1a2f55 45%, #2a4a8a 100%);
+      pointer-events: none;
     }
 
     .estrellas {
       position: absolute;
       inset: 0;
       background-image:
-        radial-gradient(1px 1px at 20% 15%, rgba(255,255,255,0.7) 0%, transparent 100%),
-        radial-gradient(1px 1px at 80% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
-        radial-gradient(1.5px 1.5px at 55% 25%, rgba(255,255,255,0.6) 0%, transparent 100%),
-        radial-gradient(1px 1px at 35% 40%, rgba(255,255,255,0.4) 0%, transparent 100%),
-        radial-gradient(1px 1px at 90% 35%, rgba(255,255,255,0.5) 0%, transparent 100%),
-        radial-gradient(1px 1px at 10% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
-        radial-gradient(1.5px 1.5px at 70% 50%, rgba(255,255,255,0.5) 0%, transparent 100%),
-        radial-gradient(1px 1px at 45% 70%, rgba(255,255,255,0.4) 0%, transparent 100%);
+        radial-gradient(1px 1px at 15% 12%, rgba(255,255,255,0.8) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 82% 8%, rgba(255,255,255,0.6) 0%, transparent 100%),
+        radial-gradient(1px 1px at 52% 20%, rgba(255,255,255,0.7) 0%, transparent 100%),
+        radial-gradient(1px 1px at 33% 35%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 88% 30%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 8% 55%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 68% 48%, rgba(255,255,255,0.6) 0%, transparent 100%),
+        radial-gradient(1.5px 1.5px at 42% 65%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 75% 70%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 25% 80%, rgba(255,255,255,0.4) 0%, transparent 100%);
     }
 
-    /* Contenedor principal */
-    .contenido {
+    /* ── Páginas ── */
+    .paginas {
       position: relative;
       z-index: 1;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .pagina {
+      position: absolute;
+      inset: 0;
+      bottom: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 0 calc(var(--nav-height) + var(--safe-bottom) + 12px) 0;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(12px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .pagina.activa {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .pagina-contenido {
+      padding: 56px 20px 20px;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 1.25rem;
-      width: 100%;
-      max-width: 440px;
+      gap: 14px;
     }
 
-    .titulo {
-      color: rgba(255,255,255,0.95);
-      font-size: 22px;
-      font-weight: 500;
-      text-align: center;
-    }
-
-    /* Sección del deslizador de horas */
-    .seccion-deslizador {
-      width: 100%;
-      background: rgba(255,255,255,0.08);
-      border: 0.5px solid rgba(255,255,255,0.15);
-      border-radius: 12px;
-      padding: 1rem 1.25rem 1.25rem;
-    }
-
-    .cabecera-deslizador {
+    /* ── Cabecera de página ── */
+    .cabecera-pagina {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 0.75rem;
+      gap: 10px;
+      padding-bottom: 4px;
     }
 
-    .etiqueta-deslizador { color: rgba(255,255,255,0.6); font-size: 13px; }
+    .titulo-pagina {
+      color: rgba(255,255,255,0.95);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
 
+    .subtitulo-pagina {
+      color: rgba(255,255,255,0.4);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    /* ── Tarjetas base ── */
+    .tarjeta {
+      background: rgba(255,255,255,0.08);
+      border: 0.5px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 18px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* ── Deslizador ── */
+    .cabecera-deslizador { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .etiqueta-deslizador { color: rgba(255,255,255,0.6); font-size: 13px; }
     .valor-deslizador {
-      color: #fff;
-      font-size: 15px;
-      font-weight: 500;
-      background: rgba(255,255,255,0.15);
-      border-radius: 20px;
-      padding: 2px 12px;
+      color: #fff; font-size: 14px; font-weight: 600;
+      background: rgba(255,255,255,0.15); border-radius: 20px; padding: 3px 12px;
       transition: transform 0.15s;
     }
-
-    .valor-deslizador.rebote { transform: scale(1.2); }
+    .valor-deslizador.rebote { transform: scale(1.15); }
 
     input[type=range] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      height: 4px;
-      border-radius: 2px;
-      background: rgba(255,255,255,0.2);
-      outline: none;
-      cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.2); outline: none; cursor: pointer;
     }
-
     input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-      cursor: pointer;
-      transition: transform 0.15s;
+      -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+      background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); cursor: pointer;
     }
-
-    input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.15); }
-
     input[type=range]::-moz-range-thumb {
-      width: 20px; height: 20px;
-      border-radius: 50%;
-      background: #fff;
-      border: none;
-      cursor: pointer;
+      width: 22px; height: 22px; border-radius: 50%; background: #fff; border: none;
     }
 
-    .marcas-deslizador {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 6px;
-      padding: 0 2px;
-    }
+    .marcas-deslizador { display: flex; justify-content: space-between; margin-top: 8px; padding: 0 2px; }
+    .marca { color: rgba(255,255,255,0.25); font-size: 11px; }
+    .marca.activa { color: rgba(255,255,255,0.85); font-weight: 600; }
 
-    .marca { color: rgba(255,255,255,0.3); font-size: 11px; transition: color 0.2s, transform 0.2s; }
-    .marca.activa { color: rgba(255,255,255,0.9); font-weight: 500; transform: scale(1.1); }
-
-    /* Indicador de carga */
+    /* ── Cargando ── */
     .cargando {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      opacity: 0;
-      transition: opacity 0.3s;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 14px; padding: 40px 0; opacity: 0; transition: opacity 0.3s;
     }
     .cargando.visible { opacity: 1; }
-
     .spinner {
-      width: 36px; height: 36px;
-      border: 2px solid rgba(255,255,255,0.15);
-      border-top-color: rgba(255,255,255,0.8);
-      border-radius: 50%;
-      animation: girar 0.8s linear infinite;
+      width: 40px; height: 40px;
+      border: 2px solid rgba(255,255,255,0.12);
+      border-top-color: rgba(255,255,255,0.9);
+      border-radius: 50%; animation: girar 0.8s linear infinite;
     }
-
     @keyframes girar { to { transform: rotate(360deg); } }
+    .texto-cargando { color: rgba(255,255,255,0.5); font-size: 14px; }
 
-    .texto-cargando { color: rgba(255,255,255,0.6); font-size: 13px; }
-
-    /* Mensaje de error */
+    /* ── Error ── */
     .mensaje-error {
-      background: rgba(226,75,74,0.2);
-      border: 0.5px solid rgba(226,75,74,0.4);
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
-      color: rgba(255,160,160,0.9);
-      font-size: 13px;
-      text-align: center;
-      display: none;
+      background: rgba(240,140,140,0.15); border: 0.5px solid rgba(240,140,140,0.3);
+      border-radius: 14px; padding: 16px; color: rgba(255,180,180,0.9);
+      font-size: 14px; text-align: center; display: none;
     }
     .mensaje-error.visible { display: block; }
 
-    /* Resultados */
-    .resultados { display: none; width: 100%; flex-direction: column; gap: 12px; }
-    .resultados.visible { display: flex; }
-
-    /* Animación de entrada */
-    @keyframes subirFadeIn {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .animado { animation: subirFadeIn 0.45s ease both; }
-    .retraso-1 { animation-delay: 0.05s; }
-    .retraso-2 { animation-delay: 0.18s; }
-    .retraso-3 { animation-delay: 0.31s; }
-    .retraso-4 { animation-delay: 0.42s; }
-
-    /* Tarjeta de lluvia */
-    .tarjeta-lluvia {
-      background: rgba(255,255,255,0.12);
-      border: 0.5px solid rgba(255,255,255,0.2);
-      border-radius: 12px;
-      padding: 1.25rem 1.5rem;
-      text-align: center;
-    }
-
-    .porcentaje-lluvia { font-size: 56px; font-weight: 500; color: #fff; line-height: 1; }
-    .etiqueta-lluvia { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
-    .descripcion-lluvia { font-size: 14px; font-weight: 500; margin-top: 8px; }
-
-    /* Gotitas decorativas */
-    .gotitas { display: flex; justify-content: center; gap: 5px; margin-top: 10px; }
-    .gota {
-      width: 8px; height: 12px;
-      border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-      background: rgba(255,255,255,0.2);
-      transition: background 0.5s, transform 0.3s;
-      transform: scale(0.8);
-    }
+    /* ── Tarjeta lluvia grande ── */
+    .tarjeta-lluvia { text-align: center; padding: 24px 20px 20px; }
+    .porcentaje-lluvia { font-size: 72px; font-weight: 700; color: #fff; line-height: 1; letter-spacing: -2px; }
+    .etiqueta-lluvia { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 6px; }
+    .descripcion-lluvia { font-size: 15px; font-weight: 500; margin-top: 10px; }
+    .barra-prob-fondo { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin-top: 16px; overflow: hidden; }
+    .barra-prob { height: 100%; width: 0%; border-radius: 2px; transition: width 1s cubic-bezier(0.4,0,0.2,1), background 0.5s; }
+    .gotitas { display: flex; justify-content: center; gap: 6px; margin-top: 14px; }
+    .gota { width: 9px; height: 13px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: rgba(255,255,255,0.15); transition: background 0.5s, transform 0.3s; transform: scale(0.7); }
     .gota.llena { transform: scale(1); }
-    .gota.lluvia-baja  { background: #7dc9a0; }
-    .gota.lluvia-media { background: #f5c97a; }
-    .gota.lluvia-alta  { background: #f08c8c; }
+    .gota.lluvia-baja { background: var(--color-verde); }
+    .gota.lluvia-media { background: var(--color-amarillo); }
+    .gota.lluvia-alta { background: var(--color-rojo); }
 
-    /* Barra de probabilidad */
-    .barra-prob-fondo {
-      width: 100%; height: 4px;
-      background: rgba(255,255,255,0.12);
-      border-radius: 2px; margin-top: 12px; overflow: hidden;
-    }
-    .barra-prob {
-      height: 100%; width: 0%; border-radius: 2px;
-      transition: width 0.9s cubic-bezier(0.4,0,0.2,1), background 0.5s;
-    }
+    /* ── Grid temperaturas 3 columnas ── */
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .tarjeta-temp { background: rgba(255,255,255,0.08); border: 0.5px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 14px 10px; text-align: center; }
+    .icono-temp { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 6px; display: block; }
+    .valor-temp { font-size: 26px; font-weight: 600; color: #fff; line-height: 1; }
+    .label-temp { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 4px; }
 
-    /* Tarjetas de temperatura */
-    .fila-temperatura { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-    .tarjeta-temperatura {
-      background: rgba(255,255,255,0.1);
-      border: 0.5px solid rgba(255,255,255,0.18);
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
-      text-align: center;
-    }
-
-    .icono-temperatura { font-size: 16px; margin-bottom: 4px; display: block; color: rgba(255,255,255,0.6); }
-    .valor-temperatura { font-size: 28px; font-weight: 500; color: #fff; line-height: 1.1; }
-    .etiqueta-temperatura { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 3px; }
-
-    /* Tarjeta recomendación bici */
+    /* ── Tarjeta bici ── */
     .tarjeta-bici {
-      width: 100%;
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      border: 0.5px solid;
+      display: flex; align-items: center; gap: 14px;
+      border-radius: 18px; padding: 16px 18px; border: 0.5px solid;
       transition: background 0.5s, border-color 0.5s;
     }
-    .tarjeta-bici.ir         { background: rgba(125,201,160,0.15); border-color: rgba(125,201,160,0.4); }
-    .tarjeta-bici.precaución { background: rgba(245,201,122,0.15); border-color: rgba(245,201,122,0.4); }
-    .tarjeta-bici.no-ir      { background: rgba(240,140,140,0.15); border-color: rgba(240,140,140,0.4); }
+    .tarjeta-bici.ir         { background: rgba(125,201,160,0.12); border-color: rgba(125,201,160,0.35); }
+    .tarjeta-bici.precaución { background: rgba(245,201,122,0.12); border-color: rgba(245,201,122,0.35); }
+    .tarjeta-bici.no-ir      { background: rgba(240,140,140,0.12); border-color: rgba(240,140,140,0.35); }
+    .bici-icono-wrap { flex-shrink: 0; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .tarjeta-bici.ir         .bici-icono-wrap { background: rgba(125,201,160,0.2); }
+    .tarjeta-bici.precaución .bici-icono-wrap { background: rgba(245,201,122,0.2); }
+    .tarjeta-bici.no-ir      .bici-icono-wrap { background: rgba(240,140,140,0.2); }
+    .bici-texto { flex: 1; }
+    .bici-veredicto { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .tarjeta-bici.ir         .bici-veredicto { color: var(--color-verde); }
+    .tarjeta-bici.precaución .bici-veredicto { color: var(--color-amarillo); }
+    .tarjeta-bici.no-ir      .bici-veredicto { color: var(--color-rojo); }
+    .bici-razon { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; }
 
-    .icono-bici-fondo {
-      flex-shrink: 0;
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.5s;
+    .linea-ciudad { font-size: 12px; color: rgba(255,255,255,0.35); text-align: center; }
+
+    /* ── Animaciones ── */
+    @keyframes subirFade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    .animado { animation: subirFade 0.4s ease both; }
+    .d1 { animation-delay: 0.04s; } .d2 { animation-delay: 0.12s; }
+    .d3 { animation-delay: 0.20s; } .d4 { animation-delay: 0.28s; }
+    .d5 { animation-delay: 0.36s; } .d6 { animation-delay: 0.44s; }
+
+    /* ── Página ubicación ── */
+    .tarjeta-ubicacion-actual {
+      display: flex; align-items: center; gap: 14px;
+      background: rgba(122,184,245,0.12); border: 0.5px solid rgba(122,184,245,0.3);
+      border-radius: 18px; padding: 18px;
     }
-    .tarjeta-bici.ir         .icono-bici-fondo { background: rgba(125,201,160,0.25); }
-    .tarjeta-bici.precaución .icono-bici-fondo { background: rgba(245,201,122,0.25); }
-    .tarjeta-bici.no-ir      .icono-bici-fondo { background: rgba(240,140,140,0.25); }
+    .ubicacion-icono { font-size: 32px; flex-shrink: 0; }
+    .ubicacion-nombre { font-size: 18px; font-weight: 600; color: #fff; }
+    .ubicacion-coords { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 3px; }
+    .btn-actualizar {
+      width: 100%; padding: 16px; border-radius: 16px; border: none; cursor: pointer;
+      background: rgba(255,255,255,0.1); border: 0.5px solid rgba(255,255,255,0.2);
+      color: #fff; font-size: 15px; font-weight: 500;
+      transition: background 0.2s, transform 0.1s;
+      -webkit-appearance: none;
+    }
+    .btn-actualizar:active { transform: scale(0.98); background: rgba(255,255,255,0.15); }
 
-    .texto-bici { flex: 1; }
-    .veredicto-bici { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
-    .tarjeta-bici.ir         .veredicto-bici { color: #7dc9a0; }
-    .tarjeta-bici.precaución .veredicto-bici { color: #f5c97a; }
-    .tarjeta-bici.no-ir      .veredicto-bici { color: #f08c8c; }
-    .razon-bici { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.5; }
+    .info-box { background: rgba(255,255,255,0.05); border: 0.5px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 14px 16px; }
+    .info-box p { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.6; }
 
-    .linea-ubicacion { font-size: 12px; color: rgba(255,255,255,0.45); text-align: center; }
+    /* ── Página recomendaciones ── */
+    .tarjeta-recomendacion {
+      border-radius: 18px; padding: 18px; border: 0.5px solid;
+      transition: background 0.5s, border-color 0.5s;
+    }
+    .rec-cabecera { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .rec-emoji { font-size: 28px; flex-shrink: 0; }
+    .rec-titulo { font-size: 16px; font-weight: 600; }
+    .rec-descripcion { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; }
+    .rec-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; margin-bottom: 8px;
+    }
 
-    /* Colores según nivel de lluvia */
-    .color-lluvia-baja  { color: #7dc9a0; }
-    .color-lluvia-media { color: #f5c97a; }
-    .color-lluvia-alta  { color: #f08c8c; }
+    /* Crema solar - niveles */
+    .uv-bajo    { background: rgba(125,201,160,0.12); border-color: rgba(125,201,160,0.3); }
+    .uv-medio   { background: rgba(245,201,122,0.12); border-color: rgba(245,201,122,0.3); }
+    .uv-alto    { background: rgba(240,140,140,0.12); border-color: rgba(240,140,140,0.3); }
+    .uv-extremo { background: rgba(200,100,240,0.12); border-color: rgba(200,100,240,0.3); }
+
+    .badge-bajo    { background: rgba(125,201,160,0.2); color: var(--color-verde); }
+    .badge-medio   { background: rgba(245,201,122,0.2); color: var(--color-amarillo); }
+    .badge-alto    { background: rgba(240,140,140,0.2); color: var(--color-rojo); }
+    .badge-extremo { background: rgba(200,100,240,0.2); color: #c864f0; }
+
+    /* Gafas */
+    .gafas-oscuras { background: rgba(40,40,60,0.3); border-color: rgba(150,150,200,0.3); }
+    .gafas-claras  { background: rgba(122,184,245,0.08); border-color: rgba(122,184,245,0.25); }
+
+    /* ── Barra de UV visual ── */
+    .barra-uv-wrap { width: 100%; height: 6px; border-radius: 3px; margin: 10px 0 6px; overflow: hidden; background: rgba(255,255,255,0.08); }
+    .barra-uv { height: 100%; border-radius: 3px; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+
+    /* ── Navegación inferior ── */
+    .nav-inferior {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      background: rgba(10,22,40,0.9);
+      border-top: 0.5px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding-bottom: var(--safe-bottom);
+      height: calc(var(--nav-height) + var(--safe-bottom));
+      flex-shrink: 0;
+    }
+
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 4px; padding: 10px 0 6px;
+      background: none; border: none; cursor: pointer;
+      color: rgba(255,255,255,0.35); transition: color 0.2s;
+      -webkit-appearance: none;
+    }
+    .nav-btn.activo { color: rgba(255,255,255,0.95); }
+    .nav-btn svg { width: 24px; height: 24px; transition: transform 0.2s; }
+    .nav-btn.activo svg { transform: scale(1.1); }
+    .nav-label { font-size: 10px; font-weight: 500; letter-spacing: 0.2px; }
+
+    /* Indicador activo */
+    .nav-btn.activo::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      width: 32px;
+      height: 2px;
+      border-radius: 0 0 2px 2px;
+      background: rgba(255,255,255,0.8);
+    }
+
+    /* ── Colores texto lluvia ── */
+    .color-lluvia-baja  { color: var(--color-verde); }
+    .color-lluvia-media { color: var(--color-amarillo); }
+    .color-lluvia-alta  { color: var(--color-rojo); }
+
+    /* ── Scrollbar oculto ── */
+    .pagina::-webkit-scrollbar { display: none; }
+    .pagina { scrollbar-width: none; }
   </style>
 </head>
 <body>
-  <div class="app">
-    <div class="fondo-cielo"><div class="estrellas"></div></div>
-    <div class="contenido">
+<div class="app">
+  <div class="fondo-cielo"><div class="estrellas"></div></div>
 
-      <p class="titulo">Pronóstico del tiempo</p>
+  <!-- ── PÁGINAS ── -->
+  <div class="paginas">
 
-      <!-- Deslizador para elegir horas -->
-      <div class="seccion-deslizador">
-        <div class="cabecera-deslizador">
-          <span class="etiqueta-deslizador">Horas a consultar</span>
-          <span class="valor-deslizador" id="valorHoras">2 horas</span>
+    <!-- PÁGINA 1: Inicio -->
+    <div class="pagina activa" id="pag-inicio">
+      <div class="pagina-contenido">
+        <div class="cabecera-pagina">
+          <div>
+            <div class="titulo-pagina">RideMeteo</div>
+            <div class="subtitulo-pagina" id="subtitulo-ciudad">Cargando ubicación...</div>
+          </div>
         </div>
-        <input type="range" id="deslizadorHoras" min="1" max="8" step="1" value="2"
-          oninput="alCambiarHoras(this.value)">
-        <div class="marcas-deslizador" id="marcas"></div>
+
+        <!-- Deslizador -->
+        <div class="tarjeta">
+          <div class="cabecera-deslizador">
+            <span class="etiqueta-deslizador">Horas a consultar</span>
+            <span class="valor-deslizador" id="valorHoras">2 horas</span>
+          </div>
+          <input type="range" id="deslizadorHoras" min="1" max="8" step="1" value="2" oninput="alCambiarHoras(this.value)">
+          <div class="marcas-deslizador" id="marcas"></div>
+        </div>
+
+        <!-- Cargando -->
+        <div class="cargando" id="indicadorCarga">
+          <div class="spinner"></div>
+          <p class="texto-cargando" id="textoCarga">Obteniendo ubicación...</p>
+        </div>
+        <div class="mensaje-error" id="mensajeError"></div>
+
+        <!-- Resultados -->
+        <div id="resultados" style="display:none; flex-direction:column; gap:14px;">
+
+          <!-- Lluvia -->
+          <div class="tarjeta tarjeta-lluvia animado d1" id="tarjetaLluvia">
+            <div class="porcentaje-lluvia" id="porcentajeLluvia">0%</div>
+            <div class="etiqueta-lluvia" id="etiquetaLluvia">probabilidad de lluvia · próximas 2 horas</div>
+            <div class="barra-prob-fondo"><div class="barra-prob" id="barraProb"></div></div>
+            <div class="descripcion-lluvia" id="descripcionLluvia"></div>
+            <div class="gotitas">
+              <div class="gota" id="g1"></div><div class="gota" id="g2"></div>
+              <div class="gota" id="g3"></div><div class="gota" id="g4"></div>
+              <div class="gota" id="g5"></div>
+            </div>
+          </div>
+
+          <!-- Temperaturas: máx / mín / sensación -->
+          <div class="grid-3">
+            <div class="tarjeta-temp animado d2">
+              <span class="icono-temp">▲</span>
+              <div class="valor-temp" id="tempMax">--°</div>
+              <div class="label-temp">Máxima</div>
+            </div>
+            <div class="tarjeta-temp animado d3">
+              <span class="icono-temp">▼</span>
+              <div class="valor-temp" id="tempMin">--°</div>
+              <div class="label-temp">Mínima</div>
+            </div>
+            <div class="tarjeta-temp animado d4">
+              <span class="icono-temp">~</span>
+              <div class="valor-temp" id="sensacion">--°</div>
+              <div class="label-temp">Sensación</div>
+            </div>
+          </div>
+
+          <!-- Bici -->
+          <div class="tarjeta-bici animado d5" id="tarjetaBici">
+            <div class="bici-icono-wrap">
+              <svg id="iconoBici" width="28" height="28" viewBox="0 0 32 32" fill="none"></svg>
+            </div>
+            <div class="bici-texto">
+              <div class="bici-veredicto" id="veredicto"></div>
+              <div class="bici-razon" id="razon"></div>
+            </div>
+          </div>
+
+          <div class="linea-ciudad animado d6" id="nombreCiudad"></div>
+        </div>
       </div>
-
-      <!-- Indicador de carga -->
-      <div class="cargando" id="indicadorCarga">
-        <div class="spinner"></div>
-        <p class="texto-cargando" id="textoCarga">Obteniendo ubicación...</p>
-      </div>
-
-      <!-- Mensaje de error -->
-      <div class="mensaje-error" id="mensajeError"></div>
-
-      <!-- Resultados del pronóstico -->
-      <div class="resultados" id="resultados">
-
-        <!-- Tarjeta de probabilidad de lluvia -->
-        <div class="tarjeta-lluvia animado retraso-1" id="tarjetaLluvia">
-          <div class="porcentaje-lluvia" id="porcentajeLluvia">0%</div>
-          <div class="etiqueta-lluvia" id="etiquetaLluvia">probabilidad de lluvia</div>
-          <div class="barra-prob-fondo"><div class="barra-prob" id="barraProb"></div></div>
-          <div class="descripcion-lluvia" id="descripcionLluvia"></div>
-          <div class="gotitas">
-            <div class="gota" id="gota1"></div>
-            <div class="gota" id="gota2"></div>
-            <div class="gota" id="gota3"></div>
-            <div class="gota" id="gota4"></div>
-            <div class="gota" id="gota5"></div>
-          </div>
-        </div>
-
-        <!-- Tarjetas de temperatura -->
-        <div class="fila-temperatura">
-          <div class="tarjeta-temperatura animado retraso-2">
-            <span class="icono-temperatura">▲</span>
-            <div class="valor-temperatura" id="tempMaxima">--°</div>
-            <div class="etiqueta-temperatura">Temperatura máx.</div>
-          </div>
-          <div class="tarjeta-temperatura animado retraso-3">
-            <span class="icono-temperatura">▼</span>
-            <div class="valor-temperatura" id="tempMinima">--°</div>
-            <div class="etiqueta-temperatura">Temperatura mín.</div>
-          </div>
-        </div>
-
-        <!-- Tarjeta de recomendación para la bici -->
-        <div class="tarjeta-bici animado retraso-4" id="tarjetaBici">
-          <div class="icono-bici-fondo">
-            <svg id="iconoBici" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"></svg>
-          </div>
-          <div class="texto-bici">
-            <div class="veredicto-bici" id="veredicto"></div>
-            <div class="razon-bici" id="razon"></div>
-          </div>
-        </div>
-
-        <div class="linea-ubicacion animado retraso-4" id="nombreCiudad"></div>
-      </div>
-
     </div>
-  </div>
 
-  <script>
-    // ─── Iconos SVG de la bicicleta según recomendación ───────────────────────
-    const ICONOS_BICI = {
-      ir: `<circle cx="8" cy="22" r="5" stroke="#7dc9a0" stroke-width="1.8" fill="none"/>
-           <circle cx="24" cy="22" r="5" stroke="#7dc9a0" stroke-width="1.8" fill="none"/>
-           <path d="M8 22 L13 10 L20 10 L24 22" stroke="#7dc9a0" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
-           <path d="M13 10 L16 22" stroke="#7dc9a0" stroke-width="1.8" fill="none"/>
-           <circle cx="20" cy="10" r="1.5" fill="#7dc9a0"/>
-           <path d="M17 7 L23 7" stroke="#7dc9a0" stroke-width="1.8" stroke-linecap="round"/>
-           <circle cx="16" cy="5" r="2" fill="none" stroke="#7dc9a0" stroke-width="1.5"/>`,
-      'precaución': `<circle cx="8" cy="22" r="5" stroke="#f5c97a" stroke-width="1.8" fill="none"/>
-              <circle cx="24" cy="22" r="5" stroke="#f5c97a" stroke-width="1.8" fill="none"/>
-              <path d="M8 22 L13 10 L20 10 L24 22" stroke="#f5c97a" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
-              <path d="M13 10 L16 22" stroke="#f5c97a" stroke-width="1.8" fill="none"/>
-              <circle cx="20" cy="10" r="1.5" fill="#f5c97a"/>
-              <path d="M17 7 L23 7" stroke="#f5c97a" stroke-width="1.8" stroke-linecap="round"/>
-              <path d="M6 4 Q8 2 10 4 Q12 6 14 4" stroke="#f5c97a" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
-      'no-ir': `<circle cx="8" cy="22" r="5" stroke="#f08c8c" stroke-width="1.8" fill="none"/>
-           <circle cx="24" cy="22" r="5" stroke="#f08c8c" stroke-width="1.8" fill="none"/>
-           <path d="M8 22 L13 10 L20 10 L24 22" stroke="#f08c8c" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
-           <path d="M13 10 L16 22" stroke="#f08c8c" stroke-width="1.8" fill="none"/>
-           <circle cx="20" cy="10" r="1.5" fill="#f08c8c"/>
-           <path d="M17 7 L23 7" stroke="#f08c8c" stroke-width="1.8" stroke-linecap="round"/>
-           <path d="M4 3 L10 9 M10 3 L4 9" stroke="#f08c8c" stroke-width="1.8" stroke-linecap="round"/>
-           <path d="M22 3 Q24 1 26 3 Q24 5 22 3Z" fill="#f08c8c" opacity="0.7"/>
-           <path d="M24 6 L24 11" stroke="#f08c8c" stroke-width="1.5" stroke-linecap="round"/>`
-    };
+    <!-- PÁGINA 2: Ubicación -->
+    <div class="pagina" id="pag-ubicacion">
+      <div class="pagina-contenido">
+        <div class="cabecera-pagina">
+          <div>
+            <div class="titulo-pagina">Ubicación</div>
+            <div class="subtitulo-pagina">Tu posición actual</div>
+          </div>
+        </div>
 
-    // ─── Lógica de recomendación para salir en bici ───────────────────────────
-    function obtenerRecomendacionBici(probMax, tempMax, tempMin) {
-      const tempMedia = (tempMax + tempMin) / 2;
+        <div class="tarjeta-ubicacion-actual animado d1" id="tarjetaUbicacion">
+          <div class="ubicacion-icono">📍</div>
+          <div>
+            <div class="ubicacion-nombre" id="ubicacion-nombre">Detectando...</div>
+            <div class="ubicacion-coords" id="ubicacion-coords">--</div>
+          </div>
+        </div>
 
-      if (probMax >= 60) {
-        return { nivel: 'no-ir', veredicto: 'Mejor no salir en bici', razon: 'Alta probabilidad de lluvia. Moja la cadena, reduce la adherencia y puede ser peligroso.' };
-      }
-      if (probMax >= 30) {
-        if (tempMedia < 8) return { nivel: 'no-ir', veredicto: 'No recomendado', razon: 'Lluvia posible y temperatura baja. Combinación incómoda y arriesgada en carretera.' };
-        return { nivel: 'precaución', veredicto: 'Sal con precaución', razon: 'Posibilidad de lluvia moderada. Lleva chubasquero y evita rutas con barro.' };
-      }
-      if (tempMedia < 4)  return { nivel: 'no-ir',      veredicto: 'Demasiado frío',         razon: 'Temperaturas muy bajas. Riesgo de hipotermia y posible hielo en el asfalto.' };
-      if (tempMedia < 10) return { nivel: 'precaución',  veredicto: 'Posible, pero abrígate', razon: 'Temperatura fresca con poco riesgo de lluvia. Lleva ropa térmica y guantes.' };
-      if (tempMedia > 36) return { nivel: 'precaución',  veredicto: 'Mucho calor',            razon: 'Sal temprano, hidratación constante y evita las horas de máximo sol.' };
-      return { nivel: 'ir', veredicto: '¡Perfecto para salir en bici!', razon: 'Buenas condiciones. Temperatura agradable y sin lluvia prevista. ¡Disfruta la ruta!' };
+        <button class="btn-actualizar animado d2" onclick="actualizarUbicacion()">
+          Actualizar ubicación
+        </button>
+
+        <div class="info-box animado d3">
+          <p>RideMeteo usa la ubicación de tu dispositivo automáticamente. Pulsa "Actualizar ubicación" si has cambiado de lugar y quieres refrescar los datos.</p>
+        </div>
+
+        <div class="info-box animado d4">
+          <p>Los datos meteorológicos provienen de <strong style="color:rgba(255,255,255,0.7)">Open-Meteo</strong>, una API gratuita y sin clave. Se actualizan cada vez que abres la app.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PÁGINA 3: Recomendaciones -->
+    <div class="pagina" id="pag-recomendaciones">
+      <div class="pagina-contenido">
+        <div class="cabecera-pagina">
+          <div>
+            <div class="titulo-pagina">Consejos</div>
+            <div class="subtitulo-pagina">Para tu salida en bici</div>
+          </div>
+        </div>
+
+        <div id="rec-cargando" class="cargando visible">
+          <div class="spinner"></div>
+          <p class="texto-cargando">Calculando recomendaciones...</p>
+        </div>
+
+        <div id="rec-contenido" style="display:none; flex-direction:column; gap:14px;">
+
+          <!-- Crema solar -->
+          <div class="tarjeta-recomendacion animado d1" id="rec-crema">
+            <div class="rec-cabecera">
+              <span class="rec-emoji">🧴</span>
+              <div>
+                <div class="rec-badge" id="badge-uv">UV bajo</div>
+                <div class="rec-titulo" id="titulo-crema">Protección solar</div>
+              </div>
+            </div>
+            <div class="barra-uv-wrap">
+              <div class="barra-uv" id="barra-uv" style="background: var(--color-verde);"></div>
+            </div>
+            <div class="rec-descripcion" id="desc-crema">Calculando...</div>
+          </div>
+
+          <!-- Gafas de sol -->
+          <div class="tarjeta-recomendacion animado d2" id="rec-gafas">
+            <div class="rec-cabecera">
+              <span class="rec-emoji" id="emoji-gafas">🕶️</span>
+              <div>
+                <div class="rec-badge" id="badge-gafas">Gafas oscuras</div>
+                <div class="rec-titulo">Gafas de sol</div>
+              </div>
+            </div>
+            <div class="rec-descripcion" id="desc-gafas">Calculando...</div>
+          </div>
+
+          <!-- Hidratación -->
+          <div class="tarjeta-recomendacion animado d3" id="rec-agua">
+            <div class="rec-cabecera">
+              <span class="rec-emoji">💧</span>
+              <div>
+                <div class="rec-badge" id="badge-agua">Normal</div>
+                <div class="rec-titulo">Hidratación</div>
+              </div>
+            </div>
+            <div class="rec-descripcion" id="desc-agua">Calculando...</div>
+          </div>
+
+          <!-- Ropa -->
+          <div class="tarjeta-recomendacion animado d4" id="rec-ropa">
+            <div class="rec-cabecera">
+              <span class="rec-emoji">🧥</span>
+              <div>
+                <div class="rec-badge" id="badge-ropa">Normal</div>
+                <div class="rec-titulo">Ropa recomendada</div>
+              </div>
+            </div>
+            <div class="rec-descripcion" id="desc-ropa">Calculando...</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /paginas -->
+
+  <!-- ── NAVEGACIÓN INFERIOR ── -->
+  <nav class="nav-inferior">
+    <button class="nav-btn activo" id="nav-inicio" onclick="irA('inicio')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/>
+      </svg>
+      <span class="nav-label">Inicio</span>
+    </button>
+    <button class="nav-btn" id="nav-ubicacion" onclick="irA('ubicacion')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 1 8 8c0 5.25-8 14-8 14S4 15.25 4 10a8 8 0 0 1 8-8z"/>
+      </svg>
+      <span class="nav-label">Ubicación</span>
+    </button>
+    <button class="nav-btn" id="nav-recomendaciones" onclick="irA('recomendaciones')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+      </svg>
+      <span class="nav-label">Consejos</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// ICONOS BICI SVG
+// ══════════════════════════════════════════════
+const ICONOS_BICI = {
+  ir: `<circle cx="8" cy="22" r="5" stroke="#7dc9a0" stroke-width="1.8" fill="none"/>
+       <circle cx="24" cy="22" r="5" stroke="#7dc9a0" stroke-width="1.8" fill="none"/>
+       <path d="M8 22 L13 10 L20 10 L24 22" stroke="#7dc9a0" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+       <path d="M13 10 L16 22" stroke="#7dc9a0" stroke-width="1.8" fill="none"/>
+       <circle cx="20" cy="10" r="1.5" fill="#7dc9a0"/>
+       <path d="M17 7 L23 7" stroke="#7dc9a0" stroke-width="1.8" stroke-linecap="round"/>
+       <circle cx="16" cy="5" r="2" fill="none" stroke="#7dc9a0" stroke-width="1.5"/>`,
+  'precaución': `<circle cx="8" cy="22" r="5" stroke="#f5c97a" stroke-width="1.8" fill="none"/>
+       <circle cx="24" cy="22" r="5" stroke="#f5c97a" stroke-width="1.8" fill="none"/>
+       <path d="M8 22 L13 10 L20 10 L24 22" stroke="#f5c97a" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+       <path d="M13 10 L16 22" stroke="#f5c97a" stroke-width="1.8" fill="none"/>
+       <circle cx="20" cy="10" r="1.5" fill="#f5c97a"/>
+       <path d="M17 7 L23 7" stroke="#f5c97a" stroke-width="1.8" stroke-linecap="round"/>
+       <path d="M6 4 Q8 2 10 4 Q12 6 14 4" stroke="#f5c97a" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
+  'no-ir': `<circle cx="8" cy="22" r="5" stroke="#f08c8c" stroke-width="1.8" fill="none"/>
+       <circle cx="24" cy="22" r="5" stroke="#f08c8c" stroke-width="1.8" fill="none"/>
+       <path d="M8 22 L13 10 L20 10 L24 22" stroke="#f08c8c" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+       <path d="M13 10 L16 22" stroke="#f08c8c" stroke-width="1.8" fill="none"/>
+       <circle cx="20" cy="10" r="1.5" fill="#f08c8c"/>
+       <path d="M17 7 L23 7" stroke="#f08c8c" stroke-width="1.8" stroke-linecap="round"/>
+       <path d="M4 3 L10 9 M10 3 L4 9" stroke="#f08c8c" stroke-width="1.8" stroke-linecap="round"/>`
+};
+
+// ══════════════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════════════
+let datosMet = null;
+let datosUV  = null;
+let indiceHora = 0;
+let latitudActual = null;
+let longitudActual = null;
+let ciudadActual = '';
+let temporizadores = [];
+
+// ══════════════════════════════════════════════
+// NAVEGACIÓN
+// ══════════════════════════════════════════════
+function irA(pagina) {
+  document.querySelectorAll('.pagina').forEach(p => p.classList.remove('activa'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('activo'));
+  document.getElementById('pag-' + pagina).classList.add('activa');
+  document.getElementById('nav-' + pagina).classList.add('activo');
+
+  if (pagina === 'recomendaciones' && datosMet) mostrarRecomendaciones();
+}
+
+// ══════════════════════════════════════════════
+// DESLIZADOR
+// ══════════════════════════════════════════════
+function construirMarcas(sel) {
+  const c = document.getElementById('marcas');
+  c.innerHTML = '';
+  for (let i = 1; i <= 8; i++) {
+    const m = document.createElement('span');
+    m.className = 'marca' + (i === sel ? ' activa' : '');
+    m.textContent = i + 'h';
+    c.appendChild(m);
+  }
+}
+
+function alCambiarHoras(v) {
+  const n = parseInt(v);
+  const badge = document.getElementById('valorHoras');
+  badge.textContent = n + (n === 1 ? ' hora' : ' horas');
+  badge.classList.add('rebote');
+  setTimeout(() => badge.classList.remove('rebote'), 200);
+  construirMarcas(n);
+  if (datosMet) mostrarResultados(n, true);
+}
+
+// ══════════════════════════════════════════════
+// CONTADOR ANIMADO
+// ══════════════════════════════════════════════
+function contarHasta(el, fin, sufijo, ms) {
+  let v = 0;
+  const inc = fin / 30;
+  const t = setInterval(() => {
+    v += inc;
+    if (v >= fin) { v = fin; clearInterval(t); }
+    el.textContent = Math.round(v) + sufijo;
+  }, ms / 30);
+  temporizadores.push(t);
+}
+
+// ══════════════════════════════════════════════
+// RECOMENDACIÓN BICI
+// ══════════════════════════════════════════════
+function recBici(probMax, sensMax, sensMin) {
+  const sm = (sensMax + sensMin) / 2;
+  if (probMax >= 60) return { nivel: 'no-ir',      v: 'Mejor no salir en bici',    r: 'Alta probabilidad de lluvia. Moja la cadena y reduce la adherencia.' };
+  if (probMax >= 30) {
+    if (sm < 8)       return { nivel: 'no-ir',      v: 'No recomendado',             r: 'Lluvia posible con temperatura baja. Combinación arriesgada.' };
+    return              { nivel: 'precaución',        v: 'Sal con precaución',         r: 'Lluvia moderada posible. Lleva chubasquero y evita el barro.' };
+  }
+  if (sm < 4)         return { nivel: 'no-ir',      v: 'Demasiado frío',             r: 'Sensación térmica muy baja. Riesgo de hielo en el asfalto.' };
+  if (sm < 10)        return { nivel: 'precaución',  v: 'Posible, pero abrígate',     r: 'Fresco con poco riesgo de lluvia. Lleva ropa térmica y guantes.' };
+  if (sm > 36)        return { nivel: 'precaución',  v: 'Mucho calor',               r: 'Sal temprano, hidrátate bien y evita el sol del mediodía.' };
+  return                { nivel: 'ir',               v: '¡Perfecto para salir!',      r: 'Buenas condiciones. Temperatura agradable y sin lluvia prevista.' };
+}
+
+// ══════════════════════════════════════════════
+// MOSTRAR RESULTADOS INICIO
+// ══════════════════════════════════════════════
+function mostrarResultados(horas, reanimar) {
+  temporizadores.forEach(t => clearInterval(t));
+  temporizadores = [];
+
+  const temps  = datosMet.hourly.temperature_2m;
+  const probs  = datosMet.hourly.precipitation_probability;
+  const senss  = datosMet.hourly.apparent_temperature;
+
+  const tramo = [];
+  for (let i = indiceHora; i < Math.min(indiceHora + horas, temps.length); i++) {
+    tramo.push({ t: temps[i], p: probs[i] || 0, s: senss[i] });
+  }
+
+  const probMax  = Math.max(...tramo.map(x => x.p));
+  const tempMax  = Math.max(...tramo.map(x => x.t));
+  const tempMin  = Math.min(...tramo.map(x => x.t));
+  const sensMax  = Math.max(...tramo.map(x => x.s));
+  const sensMin  = Math.min(...tramo.map(x => x.s));
+  const sensMed  = tramo.reduce((a, x) => a + x.s, 0) / tramo.length;
+
+  document.getElementById('etiquetaLluvia').textContent =
+    'probabilidad de lluvia · próximas ' + horas + (horas === 1 ? ' hora' : ' horas');
+
+  let desc, clsColor, clrBarra;
+  if (probMax < 20)      { desc = 'Muy poco probable que llueva';   clsColor = 'color-lluvia-baja';  clrBarra = '#7dc9a0'; }
+  else if (probMax < 50) { desc = 'Posibilidad moderada de lluvia'; clsColor = 'color-lluvia-media'; clrBarra = '#f5c97a'; }
+  else if (probMax < 75) { desc = 'Bastante probable que llueva';   clsColor = 'color-lluvia-alta';  clrBarra = '#f08c8c'; }
+  else                   { desc = 'Lluvia muy probable';            clsColor = 'color-lluvia-alta';  clrBarra = '#f08c8c'; }
+
+  document.getElementById('descripcionLluvia').textContent = desc;
+  document.getElementById('descripcionLluvia').className = 'descripcion-lluvia ' + clsColor;
+
+  if (reanimar) {
+    ['tarjetaLluvia','tarjetaBici'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    });
+  }
+
+  contarHasta(document.getElementById('porcentajeLluvia'), probMax, '%', 700);
+  contarHasta(document.getElementById('tempMax'), Math.round(tempMax), '°', 600);
+  contarHasta(document.getElementById('tempMin'), Math.round(tempMin), '°', 600);
+  contarHasta(document.getElementById('sensacion'), Math.round(sensMed), '°', 600);
+
+  setTimeout(() => {
+    const b = document.getElementById('barraProb');
+    b.style.width = probMax + '%'; b.style.background = clrBarra;
+  }, 100);
+
+  const clsGota = probMax < 20 ? 'lluvia-baja' : probMax < 50 ? 'lluvia-media' : 'lluvia-alta';
+  const nGota = Math.round(probMax / 20);
+  for (let i = 1; i <= 5; i++) {
+    const g = document.getElementById('g' + i);
+    g.className = 'gota';
+    if (i <= nGota) setTimeout(() => { g.className = 'gota llena ' + clsGota; }, 180 + i * 80);
+  }
+
+  const rec = recBici(probMax, sensMax, sensMin);
+  const tb = document.getElementById('tarjetaBici');
+  tb.className = 'tarjeta-bici animado d5 ' + rec.nivel;
+  document.getElementById('veredicto').textContent = rec.v;
+  document.getElementById('razon').textContent = rec.r;
+  document.getElementById('iconoBici').innerHTML = ICONOS_BICI[rec.nivel];
+
+  const res = document.getElementById('resultados');
+  res.style.display = 'flex';
+}
+
+// ══════════════════════════════════════════════
+// MOSTRAR RECOMENDACIONES (página 3)
+// ══════════════════════════════════════════════
+function mostrarRecomendaciones() {
+  const horas = parseInt(document.getElementById('deslizadorHoras').value);
+  const senss = datosMet.hourly.apparent_temperature;
+  const temps = datosMet.hourly.temperature_2m;
+
+  const tramo = [];
+  for (let i = indiceHora; i < Math.min(indiceHora + horas, temps.length); i++) {
+    tramo.push({ t: temps[i], s: senss[i] });
+  }
+  const sensMed = tramo.reduce((a, x) => a + x.s, 0) / tramo.length;
+  const tempMed = tramo.reduce((a, x) => a + x.t, 0) / tramo.length;
+
+  // UV index del tramo
+  let uvMed = 0;
+  if (datosUV && datosUV.hourly && datosUV.hourly.uv_index) {
+    const uvs = datosUV.hourly.uv_index;
+    let sum = 0, cnt = 0;
+    for (let i = indiceHora; i < Math.min(indiceHora + horas, uvs.length); i++) {
+      sum += uvs[i] || 0; cnt++;
+    }
+    uvMed = cnt > 0 ? sum / cnt : 0;
+  }
+
+  // ── Crema solar
+  const recCrema = document.getElementById('rec-crema');
+  const badgeUV  = document.getElementById('badge-uv');
+  const descCrm  = document.getElementById('desc-crema');
+  const barraUV  = document.getElementById('barra-uv');
+  const pctUV    = Math.min((uvMed / 11) * 100, 100);
+
+  recCrema.className = 'tarjeta-recomendacion animado d1';
+  barraUV.style.width = pctUV + '%';
+
+  if (uvMed < 3) {
+    recCrema.classList.add('uv-bajo');
+    badgeUV.textContent = 'UV bajo ' + uvMed.toFixed(1);
+    badgeUV.className = 'rec-badge badge-bajo';
+    barraUV.style.background = '#7dc9a0';
+    descCrm.textContent = 'Índice UV bajo. No necesitas crema solar, pero si vas a pedalear más de una hora al aire libre, un SPF 15 no viene mal.';
+  } else if (uvMed < 6) {
+    recCrema.classList.add('uv-medio');
+    badgeUV.textContent = 'UV moderado ' + uvMed.toFixed(1);
+    badgeUV.className = 'rec-badge badge-medio';
+    barraUV.style.background = '#f5c97a';
+    descCrm.textContent = 'Índice UV moderado. Aplica SPF 30 antes de salir, especialmente en cara, cuello y brazos. Renueva cada 2 horas.';
+  } else if (uvMed < 8) {
+    recCrema.classList.add('uv-alto');
+    badgeUV.textContent = 'UV alto ' + uvMed.toFixed(1);
+    badgeUV.className = 'rec-badge badge-alto';
+    barraUV.style.background = '#f08c8c';
+    descCrm.textContent = 'Índice UV alto. Usa SPF 50+ obligatoriamente. Protege también los labios con un bálsamo solar y lleva manguitos si puedes.';
+  } else {
+    recCrema.classList.add('uv-extremo');
+    badgeUV.textContent = 'UV muy alto ' + uvMed.toFixed(1);
+    badgeUV.className = 'rec-badge badge-extremo';
+    barraUV.style.background = '#c864f0';
+    descCrm.textContent = 'Índice UV muy alto o extremo. SPF 50+ es imprescindible. Evita pedalear entre las 12h y las 16h. Cúbrete la mayor parte posible.';
+  }
+
+  // ── Gafas de sol
+  const recGafas  = document.getElementById('rec-gafas');
+  const badgeGaf  = document.getElementById('badge-gafas');
+  const descGaf   = document.getElementById('desc-gafas');
+  const emojiGaf  = document.getElementById('emoji-gafas');
+
+  recGafas.className = 'tarjeta-recomendacion animado d2';
+
+  if (uvMed < 3) {
+    recGafas.classList.add('gafas-claras');
+    emojiGaf.textContent = '😎';
+    badgeGaf.textContent = 'Gafas claras';
+    badgeGaf.className = 'rec-badge badge-bajo';
+    descGaf.textContent = 'Con UV bajo, unas gafas de sol de cristal claro o sin filtro son suficientes. No es imprescindible llevarlas.';
+  } else if (uvMed < 6) {
+    recGafas.classList.add('gafas-oscuras');
+    emojiGaf.textContent = '🕶️';
+    badgeGaf.textContent = 'Gafas de sol';
+    badgeGaf.className = 'rec-badge badge-medio';
+    descGaf.textContent = 'UV moderado. Lleva gafas de sol con filtro UV400. Protegen tus ojos de las radiaciones y reducen la fatiga visual al pedalear.';
+  } else {
+    recGafas.classList.add('gafas-oscuras');
+    emojiGaf.textContent = '🕶️';
+    badgeGaf.textContent = 'Gafas oscuras obligatorio';
+    badgeGaf.className = 'rec-badge badge-alto';
+    descGaf.textContent = 'UV alto o muy alto. Gafas oscuras con filtro UV400 son imprescindibles. Protegen la córnea y reducen el riesgo de cataratas a largo plazo.';
+  }
+
+  // ── Hidratación
+  const recAgua   = document.getElementById('rec-agua');
+  const badgeAgua = document.getElementById('badge-agua');
+  const descAgua  = document.getElementById('desc-agua');
+
+  recAgua.className = 'tarjeta-recomendacion animado d3';
+
+  if (tempMed < 15) {
+    recAgua.style.background = 'rgba(122,184,245,0.08)';
+    recAgua.style.borderColor = 'rgba(122,184,245,0.25)';
+    badgeAgua.textContent = 'Normal';
+    badgeAgua.className = 'rec-badge badge-bajo';
+    descAgua.textContent = 'Con temperatura fresca, el cuerpo suda menos. 500 ml por hora de ruta es suficiente. No olvides hidratarte aunque no sientas sed.';
+  } else if (tempMed < 25) {
+    recAgua.style.background = 'rgba(245,201,122,0.1)';
+    recAgua.style.borderColor = 'rgba(245,201,122,0.3)';
+    badgeAgua.textContent = 'Moderada';
+    badgeAgua.className = 'rec-badge badge-medio';
+    descAgua.textContent = 'Temperatura agradable pero activa la sudoración. Lleva al menos 750 ml por hora. Bebe antes de tener sed.';
+  } else {
+    recAgua.style.background = 'rgba(240,140,140,0.1)';
+    recAgua.style.borderColor = 'rgba(240,140,140,0.3)';
+    badgeAgua.textContent = 'Alta';
+    badgeAgua.className = 'rec-badge badge-alto';
+    descAgua.textContent = 'Calor intenso. Lleva 1 litro o más por hora. Considera bebidas isotónicas para reponer sales. Busca sombra en los descansos.';
+  }
+
+  // ── Ropa
+  const recRopa   = document.getElementById('rec-ropa');
+  const badgeRopa = document.getElementById('badge-ropa');
+  const descRopa  = document.getElementById('desc-ropa');
+
+  recRopa.className = 'tarjeta-recomendacion animado d4';
+
+  if (sensMed < 4) {
+    recRopa.style.background = 'rgba(122,184,245,0.1)'; recRopa.style.borderColor = 'rgba(122,184,245,0.3)';
+    badgeRopa.textContent = 'Abrigo de invierno'; badgeRopa.className = 'rec-badge badge-bajo';
+    descRopa.textContent = 'Frío extremo. Maillot térmico de manga larga, culotte largo, cortavientos, guantes gruesos, calentadores de piernas y pasamontañas.';
+  } else if (sensMed < 10) {
+    recRopa.style.background = 'rgba(122,184,245,0.08)'; recRopa.style.borderColor = 'rgba(122,184,245,0.2)';
+    badgeRopa.textContent = 'Ropa de otoño'; badgeRopa.className = 'rec-badge badge-bajo';
+    descRopa.textContent = 'Fresco. Maillot térmico, culotte largo o con calentadores, guantes finos y chaqueta cortavientos. Al volver la sensación mejora.';
+  } else if (sensMed < 18) {
+    recRopa.style.background = 'rgba(125,201,160,0.1)'; recRopa.style.borderColor = 'rgba(125,201,160,0.3)';
+    badgeRopa.textContent = 'Temperatura media'; badgeRopa.className = 'rec-badge badge-bajo';
+    descRopa.textContent = 'Agradable. Maillot de manga corta o larga según gustos, culotte corto. Lleva un gilet o chaqueta fina por si refresca al parar.';
+  } else if (sensMed < 28) {
+    recRopa.style.background = 'rgba(125,201,160,0.1)'; recRopa.style.borderColor = 'rgba(125,201,160,0.3)';
+    badgeRopa.textContent = 'Ropa de verano'; badgeRopa.className = 'rec-badge badge-medio';
+    descRopa.textContent = 'Calor moderado. Maillot de manga corta, culotte corto y tejidos transpirables. Evita el algodón que retiene la humedad.';
+  } else {
+    recRopa.style.background = 'rgba(240,140,140,0.1)'; recRopa.style.borderColor = 'rgba(240,140,140,0.3)';
+    badgeRopa.textContent = 'Calor intenso'; badgeRopa.className = 'rec-badge badge-alto';
+    descRopa.textContent = 'Mucho calor. Ropa ultraligera y con ventilación. Moja el maillot en agua fría en los descansos. Sal muy temprano o al atardecer.';
+  }
+
+  document.getElementById('rec-cargando').classList.remove('visible');
+  document.getElementById('rec-cargando').style.display = 'none';
+  document.getElementById('rec-contenido').style.display = 'flex';
+}
+
+// ══════════════════════════════════════════════
+// ACTUALIZAR UBICACIÓN (botón página 2)
+// ══════════════════════════════════════════════
+async function actualizarUbicacion() {
+  document.getElementById('ubicacion-nombre').textContent = 'Actualizando...';
+  document.getElementById('ubicacion-coords').textContent = '--';
+  await iniciar();
+}
+
+// ══════════════════════════════════════════════
+// INICIALIZACIÓN
+// ══════════════════════════════════════════════
+async function iniciar() {
+  construirMarcas(2);
+  const carga = document.getElementById('indicadorCarga');
+  const txtCarga = document.getElementById('textoCarga');
+  const err = document.getElementById('mensajeError');
+  const res = document.getElementById('resultados');
+
+  carga.classList.add('visible');
+  err.classList.remove('visible');
+  res.style.display = 'none';
+
+  try {
+    // 1. Ubicación
+    const pos = await new Promise((ok, fail) =>
+      navigator.geolocation.getCurrentPosition(ok, fail, { timeout: 12000 })
+    );
+    latitudActual  = pos.coords.latitude;
+    longitudActual = pos.coords.longitude;
+    txtCarga.textContent = 'Descargando pronóstico...';
+
+    // 2. Datos meteo + UV en paralelo
+    const [resMet, resUV] = await Promise.all([
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitudActual}&longitude=${longitudActual}&hourly=temperature_2m,apparent_temperature,precipitation_probability&forecast_days=1&timezone=auto`),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitudActual}&longitude=${longitudActual}&hourly=uv_index&forecast_days=1&timezone=auto`)
+    ]);
+    datosMet = await resMet.json();
+    datosUV  = await resUV.json();
+
+    // 3. Índice hora local
+    const ahora = new Date();
+    const horaStr = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}T${String(ahora.getHours()).padStart(2,'0')}`;
+    const idx = datosMet.hourly.time.findIndex(h => h.startsWith(horaStr));
+    indiceHora = idx === -1 ? 0 : idx;
+
+    // 4. Geocodificación inversa
+    try {
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitudActual}&lon=${longitudActual}&format=json`);
+      const geo = await geoRes.json();
+      ciudadActual = geo.address?.city || geo.address?.town || geo.address?.village || 'Tu ubicación';
+      document.getElementById('nombreCiudad').textContent = ciudadActual;
+      document.getElementById('subtitulo-ciudad').textContent = ciudadActual;
+      document.getElementById('ubicacion-nombre').textContent = ciudadActual;
+    } catch(e) {
+      ciudadActual = 'Tu ubicación';
+      document.getElementById('ubicacion-nombre').textContent = 'Tu ubicación';
+      document.getElementById('subtitulo-ciudad').textContent = 'Ubicación actual';
     }
 
-    // ─── Variables globales ───────────────────────────────────────────────────
-    let datosMeteorológicos = null;
-    let indiceHoraActual = 0;
-    let temporizadoresContador = [];
+    document.getElementById('ubicacion-coords').textContent =
+      latitudActual.toFixed(4) + '°N, ' + longitudActual.toFixed(4) + '°E';
 
-    // ─── Construir las marcas del deslizador ─────────────────────────────────
-    function construirMarcas(horaSeleccionada) {
-      const contenedor = document.getElementById('marcas');
-      contenedor.innerHTML = '';
-      for (let hora = 1; hora <= 8; hora++) {
-        const marca = document.createElement('span');
-        marca.className = 'marca' + (hora === horaSeleccionada ? ' activa' : '');
-        marca.textContent = hora + 'h';
-        contenedor.appendChild(marca);
-      }
-    }
+    carga.classList.remove('visible');
+    mostrarResultados(parseInt(document.getElementById('deslizadorHoras').value), false);
 
-    // ─── Animar el badge de horas al cambiar ─────────────────────────────────
-    function animarBadgeHoras() {
-      const badge = document.getElementById('valorHoras');
-      badge.classList.add('rebote');
-      setTimeout(() => badge.classList.remove('rebote'), 200);
-    }
+    // Reset recomendaciones para forzar recálculo
+    document.getElementById('rec-cargando').style.display = 'flex';
+    document.getElementById('rec-cargando').classList.add('visible');
+    document.getElementById('rec-contenido').style.display = 'none';
 
-    // ─── Al mover el deslizador ───────────────────────────────────────────────
-    function alCambiarHoras(valor) {
-      const horas = parseInt(valor);
-      document.getElementById('valorHoras').textContent = horas + (horas === 1 ? ' hora' : ' horas');
-      animarBadgeHoras();
-      construirMarcas(horas);
-      if (datosMeteorológicos) mostrarResultados(horas, true);
-    }
+  } catch(error) {
+    let msg = 'Error al obtener datos.';
+    if (error.code === 1) msg = 'Permiso de ubicación denegado. Actívalo en Ajustes.';
+    else if (error.code === 2) msg = 'No se pudo obtener la ubicación. Comprueba el GPS.';
+    else if (error.code === 3) msg = 'Tiempo de espera agotado. Inténtalo de nuevo.';
+    carga.classList.remove('visible');
+    err.textContent = msg;
+    err.classList.add('visible');
+  }
+}
 
-    // ─── Animación de contador numérico ──────────────────────────────────────
-    function animarContador(elemento, valorFinal, sufijo, duracion) {
-      let valorActual = 0;
-      const pasos = 30;
-      const incremento = valorFinal / pasos;
-      const intervalo = duracion / pasos;
-      const temporizador = setInterval(() => {
-        valorActual += incremento;
-        if (valorActual >= valorFinal) { valorActual = valorFinal; clearInterval(temporizador); }
-        elemento.textContent = Math.round(valorActual) + sufijo;
-      }, intervalo);
-      temporizadoresContador.push(temporizador);
-    }
-
-    // ─── Mostrar los resultados del pronóstico ────────────────────────────────
-    function mostrarResultados(horas, reanimar) {
-      // Cancelar contadores anteriores
-      temporizadoresContador.forEach(t => clearInterval(t));
-      temporizadoresContador = [];
-
-      const temperaturas   = datosMeteorológicos.hourly.temperature_2m;
-      const probabilidades = datosMeteorológicos.hourly.precipitation_probability;
-
-      // Extraer el tramo de horas seleccionado
-      const tramo = [];
-      for (let i = indiceHoraActual; i < Math.min(indiceHoraActual + horas, temperaturas.length); i++) {
-        tramo.push({ temp: temperaturas[i], prob: probabilidades[i] || 0 });
-      }
-
-      const probMax = Math.max(...tramo.map(h => h.prob));
-      const tempMax = Math.max(...tramo.map(h => h.temp));
-      const tempMin = Math.min(...tramo.map(h => h.temp));
-
-      // Actualizar etiqueta de horas
-      document.getElementById('etiquetaLluvia').textContent =
-        'probabilidad de lluvia · próximas ' + horas + (horas === 1 ? ' hora' : ' horas');
-
-      // Determinar nivel de lluvia
-      let descripcion, claseColor, colorBarra;
-      if (probMax < 20)      { descripcion = 'Muy poco probable que llueva';   claseColor = 'color-lluvia-baja';  colorBarra = '#7dc9a0'; }
-      else if (probMax < 50) { descripcion = 'Posibilidad moderada de lluvia'; claseColor = 'color-lluvia-media'; colorBarra = '#f5c97a'; }
-      else if (probMax < 75) { descripcion = 'Bastante probable que llueva';   claseColor = 'color-lluvia-alta';  colorBarra = '#f08c8c'; }
-      else                   { descripcion = 'Lluvia muy probable';            claseColor = 'color-lluvia-alta';  colorBarra = '#f08c8c'; }
-
-      document.getElementById('descripcionLluvia').textContent = descripcion;
-      document.getElementById('descripcionLluvia').className = 'descripcion-lluvia ' + claseColor;
-
-      // Reanimar tarjetas si viene de cambiar el slider
-      if (reanimar) {
-        ['tarjetaLluvia', 'tarjetaBici'].forEach(id => {
-          const el = document.getElementById(id);
-          el.style.animation = 'none';
-          void el.offsetWidth;
-          el.style.animation = '';
-        });
-      }
-
-      // Animar números
-      animarContador(document.getElementById('porcentajeLluvia'), probMax, '%', 700);
-      animarContador(document.getElementById('tempMaxima'), Math.round(tempMax), '°C', 600);
-      animarContador(document.getElementById('tempMinima'), Math.round(tempMin), '°C', 600);
-
-      // Animar barra de probabilidad
-      setTimeout(() => {
-        const barra = document.getElementById('barraProb');
-        barra.style.width = probMax + '%';
-        barra.style.background = colorBarra;
-      }, 100);
-
-      // Animar gotitas
-      const claseGota = probMax < 20 ? 'lluvia-baja' : probMax < 50 ? 'lluvia-media' : 'lluvia-alta';
-      const gotasActivas = Math.round(probMax / 20);
-      for (let i = 1; i <= 5; i++) {
-        const gota = document.getElementById('gota' + i);
-        gota.className = 'gota';
-        if (i <= gotasActivas) {
-          setTimeout(() => { gota.className = 'gota llena ' + claseGota; }, 200 + i * 80);
-        }
-      }
-
-      // Actualizar tarjeta de recomendación bici
-      const recomendacion = obtenerRecomendacionBici(probMax, tempMax, tempMin);
-      const tarjetaBici = document.getElementById('tarjetaBici');
-      tarjetaBici.className = 'tarjeta-bici animado retraso-4 ' + recomendacion.nivel;
-      document.getElementById('veredicto').textContent = recomendacion.veredicto;
-      document.getElementById('razon').textContent = recomendacion.razon;
-      document.getElementById('iconoBici').innerHTML = ICONOS_BICI[recomendacion.nivel];
-
-      document.getElementById('resultados').classList.add('visible');
-    }
-
-    // ─── Inicialización: obtener ubicación y datos meteorológicos ─────────────
-    async function iniciar() {
-      construirMarcas(2);
-      const indicadorCarga = document.getElementById('indicadorCarga');
-      const textoCarga     = document.getElementById('textoCarga');
-      const mensajeError   = document.getElementById('mensajeError');
-
-      indicadorCarga.classList.add('visible');
-
-      try {
-        // 1. Pedir ubicación al navegador
-        const posicion = await new Promise((resolver, rechazar) =>
-          navigator.geolocation.getCurrentPosition(resolver, rechazar, { timeout: 10000 })
-        );
-        textoCarga.textContent = 'Consultando pronóstico...';
-
-        const { latitude: latitud, longitude: longitud } = posicion.coords;
-
-        // 2. Obtener datos meteorológicos de Open-Meteo (gratis, sin clave API)
-        //    timezone=auto hace que la API devuelva horas en hora local del usuario
-        const urlMeteo = `https://api.open-meteo.com/v1/forecast?latitude=${latitud}&longitude=${longitud}&hourly=temperature_2m,precipitation_probability&forecast_days=1&timezone=auto`;
-        const respuestaMeteo = await fetch(urlMeteo);
-        datosMeteorológicos = await respuestaMeteo.json();
-
-        // 3. Construir la hora local del dispositivo para encontrar el índice correcto
-        //    Usamos getHours() en lugar de toISOString() para evitar el desfase UTC
-        const ahora = new Date();
-        const anio  = ahora.getFullYear();
-        const mes   = String(ahora.getMonth() + 1).padStart(2, '0');
-        const dia   = String(ahora.getDate()).padStart(2, '0');
-        const hora  = String(ahora.getHours()).padStart(2, '0');
-        const horaLocalStr = `${anio}-${mes}-${dia}T${hora}`;
-
-        const indice = datosMeteorológicos.hourly.time.findIndex(h => h.startsWith(horaLocalStr));
-        indiceHoraActual = indice === -1 ? 0 : indice;
-
-        // 4. Obtener nombre de la ciudad (opcional, puede fallar sin problema)
-        try {
-          const respuestaGeo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitud}&lon=${longitud}&format=json`);
-          const datosGeo = await respuestaGeo.json();
-          const ciudad = datosGeo.address?.city || datosGeo.address?.town || datosGeo.address?.village || '';
-          if (ciudad) document.getElementById('nombreCiudad').textContent = ciudad;
-        } catch (errorGeo) {
-          // Si falla la geocodificación inversa, simplemente no mostramos la ciudad
-        }
-
-        // 5. Mostrar resultados
-        indicadorCarga.classList.remove('visible');
-        mostrarResultados(parseInt(document.getElementById('deslizadorHoras').value), false);
-
-      } catch (error) {
-        // Mensajes de error según el tipo de fallo
-        let mensajeTexto = 'Error al obtener datos.';
-        if (error.code === 1) mensajeTexto = 'Permiso de ubicación denegado. Actívalo en tu navegador.';
-        else if (error.code === 2) mensajeTexto = 'No se pudo obtener la ubicación.';
-        else if (error.code === 3) mensajeTexto = 'Tiempo de espera agotado. Recarga la página.';
-
-        indicadorCarga.classList.remove('visible');
-        mensajeError.textContent = mensajeTexto;
-        mensajeError.classList.add('visible');
-      }
-    }
-
-    // Arrancar la aplicación
-    iniciar();
-  </script>
+iniciar();
+</script>
 </body>
 </html>
